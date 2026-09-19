@@ -5,6 +5,12 @@ pipeline {
         timestamps()
         disableConcurrentBuilds()
         skipDefaultCheckout(true)
+	buildDiscarder(logRotator(
+            daysToKeepStr: '30',
+            numToKeepStr: '10',
+            artifactDaysToKeepStr: '30',
+            artifactNumToKeepStr: '10'
+	))
     }
 
     environment {
@@ -51,8 +57,15 @@ pipeline {
                 }
             }
             steps {
-                sh 'npm audit --audit-level=high'
-            }
+		sh '''
+                    set +e
+                    npm audit --audit-level=high --json > audit-report.json
+                    audit_status=$?
+                    set -e
+                    cat audit-report.json
+                    exit $audit_status
+		'''
+	    }
         }
 
         stage('Build Application Image') {
@@ -83,6 +96,14 @@ pipeline {
     }
 
     post {
+	always {
+            archiveArtifacts(
+		artifacts: 'package.json,package-lock.json,Dockerfile,Jenkinsfile,.dockerignore,test/**,audit-report.json',
+		allowEmptyArchive: true,
+		defaultExcludes: false,
+		fingerprint: true
+            )
+	}
         success {
             echo 'Pipeline completed successfully: image built and published.'
         }
