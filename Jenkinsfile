@@ -67,6 +67,12 @@ pipeline {
 		'''
 	    }
         }
+	
+        stage('Validation Safety Stop') {
+            steps {
+                error('Validation-only safeguard: audit unexpectedly passed; image build and publication are prohibited.')
+            }
+        }
 
         stage('Build Application Image') {
             steps {
